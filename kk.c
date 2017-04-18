@@ -42,7 +42,7 @@
 
 
 long long* prob;
-long long* sol;
+int* sol;
 
 
 
@@ -132,9 +132,9 @@ int main(int argc, char* argv[]) {
  * and selects best, returns residue
  *
  */
-long long repeated_rand(long long* sol, int mode) {
+long long repeated_rand(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
-		long long* new_sol = rand_sol(mode);
+		int* new_sol = rand_sol(mode);
 		if(residue(new_sol, mode) < residue(sol, mode)){
 			sol = new_sol;
 		}
@@ -152,9 +152,9 @@ long long repeated_rand(long long* sol, int mode) {
  *
  */
 
-long long hill_climb(long long* sol, int mode) {
+long long hill_climb(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
-		long long* new_sol = gen_rand_neighbor(sol, mode);
+		int* new_sol = gen_rand_neighbor(sol, mode);
 		if(residue(new_sol, mode) < residue(sol, mode)){
 			sol = new_sol;
 		}		
@@ -171,11 +171,11 @@ long long hill_climb(long long* sol, int mode) {
  *
  */
 
-long long sim_anneal(long long* sol, int mode) {
-	long long* orig_sol = sol;
+long long sim_anneal(int* sol, int mode) {
+	int* orig_sol = sol;
 	for(int i = 0; i < MAX_ITER; i++){
-		long long* new_sol = gen_rand_neighbor(sol, mode);
-		double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/t(i));
+		int* new_sol = gen_rand_neighbor(sol, mode);
+		double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((double) t(i)));
 		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
 			sol = new_sol;
 	    }
@@ -348,6 +348,21 @@ void printheap(heap* hp) {
  * * * * * * * * * * * * *
  * * * * * * * * * * * * */
 
+/*
+ * genrange(n)
+ *
+ * generates a random integer in range [0, n(
+ *
+ */
+int genrange(int n) {
+	double ret;
+	do {
+		ret = drand48() * n;
+	} while (ret == n);
+	return (int) ret;
+}
+
+
 /* 
  * genbig()
  *
@@ -390,21 +405,19 @@ long long* genprob() {
  * and pre-partitioned form otherwise
  *
  */
-long long* rand_sol(int mode) {
-	// generate a random standard solution
-	if (mode) {
-		long long* sol = malloc(sizeof(int)*PROBSIZE);
-		for(int i=0; i<MAX_ITER; i++) {
-			double num = (drand48()*2 - 1);
-			int numf = num/(fabs(num));
-			sol[i] = numf;
+int* rand_sol(int mode) {
+	int* sol = (int*) calloc(PROBSIZE, sizeof(int));
+	for(int i = 0; i < PROBSIZE; i++) {
+		// standard solution format
+		if (mode) {
+			sol[i] = (drand48() < .5) ? -1 : 1;
 		}
-		return sol;
+		// prepartitioned solution format
+		else {
+			sol[i] = genrange(PROBSIZE);
+		}
 	}
-	// generate a random pre-partitioned solution
-	else {
-		//TODO
-	}
+	return sol;
 }
 
 
@@ -416,40 +429,37 @@ long long* rand_sol(int mode) {
  * pre-partitioned format
  *
  */
-long long* gen_rand_neighbor(long long* sol, int mode) {
-	// generate a random standard neighbor solution
-	if (mode) {
-		int prob_swap = drand48();
+int* gen_rand_neighbor(int* sol, int mode) {
+	// copy old solution
+	int* newsol = (int*) calloc(PROBSIZE, sizeof(int));
+	memcpy(newsol, sol, PROBSIZE * sizeof(int));
 
-		if(prob_swap < 0.5) {
-			int i1 = rand()%(PROBSIZE-1);
-			int i2 = rand()%(PROBSIZE-1);
-			int temp = sol[i1];
-			sol[i1] = sol[i2];
-			sol[i2] = temp;
+	// change copy to random neighbor using standard format
+	if (mode) {
+		if (drand48() < .5) {
+			newsol[genrange(PROBSIZE)] *= -1;
 		}
 		else {
-			int prob_elt = drand48();
-			//  (100/(100 choose 2))
-			int prob_set = 2/99;
-
-			if(prob_elt < prob_set){
-				int i = (rand()%(PROBSIZE-1));
-				sol[i] = sol[i]*(-1);
-			}
-			else {
-				int i1 = rand()%(PROBSIZE-1);
-				int i2 = rand()%(PROBSIZE-1);
-				sol[i1] = sol[i1]*(-1);
-				sol[i2] = sol[i2]*(-1);
-			}
+			int c1 = genrange(PROBSIZE);
+			int c2;
+			do {
+				c2 = genrange(PROBSIZE);
+			} while (c1 == c2);
+			newsol[c1] *= -1;
+			newsol[c2] *= -1;
 		}
-	return sol;
 	}
-	// generate a random pre-partitioned neighbor solution
+	// change copy to random neighbor using pre-partitioned format
 	else {
-		//TODO
+		int ind = genrange(PROBSIZE);
+		int to;
+		do {
+			to = genrange(PROBSIZE);
+		} while (newsol[ind] == to);
+		newsol[ind] = to;
 	}
+
+	return newsol;
 }
 
 /*
@@ -460,7 +470,7 @@ long long* gen_rand_neighbor(long long* sol, int mode) {
  * and pre-partitioned form otherwise
  *
  */
-long long residue(long long* sol, int mode) {
+long long residue(int* sol, int mode) {
 	// find residue of prob with standard solution
 	if (mode) {
 		//TODO
