@@ -1,137 +1,493 @@
-/*
-*
-* CS124: PA3
-* Chris Arndt & Niamh Mulholland
-* */
-
-#include <stdio.h>
+#define XOPEN_SOURCE
 #include <stdlib.h>
-#include <stddef.h>
-#include <time.h>
+#include <stdio.h>
 #include <math.h>
+#include <time.h>
+#include <string.h>
+#include "kk.h"
 
+// maximum number of iterations for heuristics
 #define MAX_ITER 100
+// number of elements in a single problem
+#define PROBSIZE 100
+// total number of problems
+#define NUMPROBS 100
+// maximum element in a single problem
+#define MAXNUM 1000000000000
 
-/* 
- * Standard representation functions
+/*
  *
- *  standard_rep - generates random sequence of -1,1 
- *  neighbours - moves from solution S to a neighbour
- * 				 by moving 1 or 2 elements from set A1 
- *				 to A2 and vice versa, or swapping elements
- *				 from two sets,
+ * CS124: PA3
+ * Chris Arndt & Niamh Mulholland
+ * Heuristic Approaches to NP-Complete Problems
+ *
+ * Usage: 
+ *   ./kk [inputfile]
+ *
+ * If given an inputfile of the specified format, 
+ *   the file will be parsed and the karmarkar karp
+ *   algorithm will be run on the resulting sequence
+ *   of numbers.  The residue will be printed to 
+ *   STDOUT
+ *
+ * If not given an inputfile, 100 random sequences 
+ *   of 100 numbers will be generated, and the specified
+ *   algorithms will be run on each one.  The residues of
+ *   these algorithms will be printed to the file 
+ *   results.tsv
+ * 
  */
 
-int* standard_rep(int n) {
-	int* sol = malloc(sizeof(int)*n);
-	for(int i=0; i<n; i++){
-		double num = (drand48()*2 - 1);
-		int numf = num/(fabs(num));
-		sol[i] = numf;
+
+
+
+long long* prob;
+long long* sol;
+
+
+
+int main(int argc, char* argv[]) {
+	// error checking and rand() seed
+	if (argc > 2) {
+		printf("\n\n    Usage: ./kk [inputfile]\n");
 	}
-return sol;
-}
+	srand(time(NULL));
+	srand48(time(NULL));
 
+	// if given inputfile, parse and run KK
+	if (argc == 2) {
+		// read file into string
+		FILE* f = fopen(argv[1], "r");	
+		fseek(f, 0, SEEK_END);
+		int fsz = ftell(f);
+		char* fstr = malloc(fsz);
+		fseek(f, 0, SEEK_SET);
+		fread(fstr, fsz, 1, f);
 
-int* neighbours(int sol[], int n) {
-	int prob_swap = drand48();
+		// declare heap
+		heap* hp = heap_init();
 
-	if(prob_swap < 0.5) {
-		int i1 = rand()%(n-1);
-		int i2 = rand()%(n-1);
-		int temp = sol[i1];
-		sol[i1] = sol[i2];
-		sol[i2] = temp;
+		// parse data
+		char* buf = strtok(fstr, "\n");
+		for (int i = 0; i < PROBSIZE; i++) {
+			insert(atoll(buf), hp);
+			printf("%llu\n", atoll(buf));
+			buf = strtok(NULL, "\n");
+		}
+
+		// print result and exit
+		long long res = kk(hp);
+		heap_kill(hp);
+		printf("%llu\n", res);
 	}
 	else {
-		int prob_elt = drand48();
-		//  (100/(100 choose 2))
-		int prob_set = 2/99;
+		// open results file and declare variables
+		FILE* w = fopen("results.tsv", "w");
+		fprintf(w, "kk\trs\trp\ths\thp\tss\tsp\n");
+		long long karmkarp, randstd, randpp, 
+			 	hillstd, hillpp, simstd, simpp;
 
-		if(prob_elt < prob_set){
-			int i = (rand()%(n-1));
-			sol[i] = sol[i]*(-1);
-		}
-		else {
-			int i1 = rand()%(n-1);
-			int i2 = rand()%(n-1);
-			sol[i1] = sol[i1]*(-1);
-			sol[i2] = sol[i2]*(-1);
+
+
+		// iterate through NUMPROBS problems and find solutions
+		for (int i = 0; i < NUMPROBS; i++) {
+			prob = genprob();
+			heap* hp = heap_init();
+			insert_prob(prob, hp);
+
+			// run algorithms on problem
+			karmkarp = kk(hp);
+			randstd = repeated_rand(rand_sol(0), 0);
+			randpp = repeated_rand(rand_sol(1), 1);
+			hillstd = hill_climb(rand_sol(0), 0);
+			hillpp = hill_climb(rand_sol(1), 1);
+			simstd = sim_anneal(rand_sol(0), 0);
+			simpp = sim_anneal(rand_sol(1), 1);
+
+			// clean up for next loop and print
+			heap_kill(hp);
+			free(prob);
+			fprintf(w, "%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", 
+				karmkarp, randstd, randpp, hillstd, hillpp, 
+				simstd, simpp);
 		}
 	}
-return sol;
+	return(0);
 }
 
-/* repeated random
-* takes pointer to list
-* repeatedly generates random solutions
-* returns residue 
-*/
 
-/*TODO:
-*IMPLEMENT RAND_SOL
-*IMPLEMENT RESIDUE
-* IMPLEMENT GEN_RAND_NEIGHBOUR
-* IMPLEMENT T()
-*/
+
+
+
+/* * * * * * * * * * * * * * *
+ * * * * * * * * * * * * * * *
+ * * * * HEURISTICS  * * * * *
+ * * * * * * * * * * * * * * *
+ * * * * * * * * * * * * * * */
 
 /*
-int* repeated_rand(int* sol) {
+ * repeated_rand(sol, mode) 
+ *
+ * continually generates random solutions 
+ * and selects best, returns residue
+ *
+ */
+long long repeated_rand(long long* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
-		int* new_sol = rand_sol();
-		if(residue(new_sol) < residue(sol)){
+		long long* new_sol = rand_sol(mode);
+		if(residue(new_sol, mode) < residue(sol, mode)){
 			sol = new_sol;
 		}
 	}
-return sol;
+	return residue(sol, mode);
 }
 
 
-* hill climbing
-* takes pointer to list
-* improves through moves to (better) neighbours
-* returns residue 
-*
+/* 
+ * hill_climb(sol, mode)
+ *
+ * takes pointer to list
+ * improves through moves to (better) neighbors
+ * returns residue 
+ *
+ */
 
-int* hill_climb(int* sol) {
+long long hill_climb(long long* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
-		int* new_sol = gen_rand_neighbour(sol);
-		if(residue(new_sol) < residue(sol)){
+		long long* new_sol = gen_rand_neighbor(sol, mode);
+		if(residue(new_sol, mode) < residue(sol, mode)){
 			sol = new_sol;
 		}		
 	}
-return sol;
+	return residue(sol, mode);
 }
 
-* simulated annealing 
-* takes pointer to list
-* improves through moves to (not always better) neighbours
-* returns residue 
-*
+/* 
+ * sim_anneal(sol, mode)
+ *
+ * takes pointer to list
+ * improves through moves to (not always better) neighbors
+ * returns residue 
+ *
+ */
 
-int* sim_anneal(int* sol) {
-	int* orig_sol = sol;
+long long sim_anneal(long long* sol, int mode) {
+	long long* orig_sol = sol;
 	for(int i = 0; i < MAX_ITER; i++){
-		int* new_sol = sol;
-		int prob = -(residue(new_sol)-residue(sol))/T(i);
-		if(residue(new_sol) < residue(sol)){
+		long long* new_sol = gen_rand_neighbor(sol, mode);
+		double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/t(i));
+		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
 			sol = new_sol;
-	     }
-	     else if(prob > num){ //need to fix this line
-	     	if(residue(new_sol) < residue(orig_sol)) {
-	     		orig_sol = sol;
-	     	}
-	     }
-return orig_sol;
-}*/ 
-
-int main() { 
-	time_t t;
-	// initialise RNG
-	srand48(time(&t));
-	int* sol = standard_rep(10);
-	neighbours(sol, 10);
-	free(sol);
+	    }
+	    if(residue(sol, mode) < residue(orig_sol, mode)) {
+	    	orig_sol = sol;
+	    }
+	}
+	return residue(orig_sol, mode);
+}
 
 
-}	
+
+
+
+/* * * * * * * * * * * * * *
+ * * * * * * * * * * * * * *
+ * * * HEAP FUNCTIONS  * * * 
+ * * * * * * * * * * * * * *
+ * * * * * * * * * * * * * */
+
+/* 
+ * Iterator functions
+ *
+ * par(child) - returns index of child's parent
+ * left(par) - returns index of parent's left child
+ * right(par) - returns index of parent's right child
+ *
+ */
+
+int par(int child) {
+	if (child == 0) {
+		return -1;
+	}
+	else if (child % 2 == 0) {
+		return (child - 1) / 2;
+	}
+	else {
+		return child / 2;
+	}
+}
+
+int left(int par) {
+	return 2*par + 1;
+}
+
+int right(int par) {
+	return left(par) + 1;
+}
+
+
+/*
+ * Heap manipulation functions
+ *
+ * heap_init() - initializes a heap 
+ * heap_kill() - frees a heap
+ * insert(elt, hp) - inserts element elt into heap hp
+ * pull(hp) - pulls the minimum element of heap hp
+ * insert_prob(prob, hp) - inserts entire problem prob into heap hp
+ * printheap(hp) - prints heap (for testing purposes)
+ * 
+ */
+
+heap* heap_init() {
+	heap* hp = (heap*) calloc(1, sizeof(heap));
+	hp->h = (long long*) calloc(100, sizeof(long long));
+	hp->sz = 0;
+	return hp;
+}
+
+/*
+ * heap_kill(hp)
+ *
+ * frees allocated memory for heap hp
+ *
+ */
+void heap_kill(heap* hp) {
+	free(hp->h);
+	free(hp);
+}
+
+/*
+ * insert(elt, hp) 
+ *
+ * inserts element at bottom of heap 
+ * and bubbles up through parents until 
+ * max-heap condition is met
+ *
+ */
+void insert(long long elt, heap* hp) {
+	hp->sz++;
+	hp->h[hp->sz - 1] = elt;
+	int cur = hp->sz - 1;
+	int next = par(cur);
+	while (next >= 0 && hp->h[next] < elt) {
+		hp->h[cur] = hp->h[next];
+		cur = next;
+		next = par(cur);
+	}
+	hp->h[cur] = elt;
+}
+
+/*
+ * pull(hp)
+ *
+ * takes element on top of heap, 
+ * replaces it with last element, and 
+ * bubbles down until the max-heap 
+ * condition is met
+ *
+ */
+long long pull(heap* hp) {
+	int maxelt = hp->h[0];
+	int last = hp->h[hp->sz];
+	hp->h[hp->sz] = 0;
+	hp->sz--;
+	int swap, cur;
+	for (cur = 0; left(cur) <= hp->sz; cur = swap) {
+		// find larger child
+		swap = left(cur);
+		if (swap != hp->sz && hp->h[swap] < hp->h[right(cur)]) {
+			swap = right(cur);
+		}
+
+		// perform requisite swaps
+		if (last < hp->h[swap]) {
+			hp->h[cur] = hp->h[swap];
+		}
+		else {
+			break;
+		}
+	}
+	hp->h[cur] = last;
+	return maxelt;
+}
+
+/*
+ * insert_prob(prob, hp)
+ *
+ * inserts each element in prob into a heap
+ *
+ */
+void insert_prob(long long* prob, heap* hp) {
+	for (int i = 0; i < PROBSIZE; i++) {
+		insert(prob[i], hp);
+	}
+}
+
+/*
+ * printheap(hp)
+ * 
+ * prints heap hp
+ *
+ */
+void printheap(heap* hp) {
+	printf("[");
+	int i;
+	for (i = 0; i < hp->sz; i++) {
+		printf("%llu,  ", hp->h[i]);
+	}
+	printf("]\n");
+}
+
+
+
+
+
+/* * * * * * * * * * * * *
+ * * * * * * * * * * * * *
+ * * * * * OTHER * * * * *
+ * * * * * * * * * * * * *
+ * * * * * * * * * * * * */
+
+/* 
+ * genbig()
+ *
+ * generates a random number in the 
+ * range [1, 10^12]
+ *
+ */
+long long genbig() {
+	long long l;
+	do {
+		l = (long long) 
+			(((uint64_t) rand()) & 0x000000000000FFFFull) | 
+			(((uint64_t) rand() << 16) & 0x00000000FFFF0000ull) | 
+			(((uint64_t) rand() << 32) & 0x0000FFFF00000000ull);
+	} while (l > MAXNUM || l == 0);
+	return l;
+}
+
+/*
+ * genprob()
+ *
+ * generates a number partition problem 
+ * of PROBSIZE elements
+ *
+ */
+long long* genprob() {
+	long long* ret = (long long*) calloc(PROBSIZE, sizeof(long long));
+	for (int i = 0; i < PROBSIZE; i++) {
+		ret[i] = genbig();
+	}
+	return ret;
+}
+
+
+/*
+ * rand_sol(mode)
+ *
+ * generates a random solution of 
+ * standard form if mode is non-zero 
+ * and pre-partitioned form otherwise
+ *
+ */
+long long* rand_sol(int mode) {
+	// generate a random standard solution
+	if (mode) {
+		long long* sol = malloc(sizeof(int)*PROBSIZE);
+		for(int i=0; i<MAX_ITER; i++) {
+			double num = (drand48()*2 - 1);
+			int numf = num/(fabs(num));
+			sol[i] = numf;
+		}
+		return sol;
+	}
+	// generate a random pre-partitioned solution
+	else {
+		//TODO
+	}
+}
+
+
+/*
+ * gen_random_neighbor(sol, mode)
+ *
+ * generates a random neighbor solution to solution sol
+ * if mode is non-zero, uses standard format; else, uses 
+ * pre-partitioned format
+ *
+ */
+long long* gen_rand_neighbor(long long* sol, int mode) {
+	// generate a random standard neighbor solution
+	if (mode) {
+		int prob_swap = drand48();
+
+		if(prob_swap < 0.5) {
+			int i1 = rand()%(PROBSIZE-1);
+			int i2 = rand()%(PROBSIZE-1);
+			int temp = sol[i1];
+			sol[i1] = sol[i2];
+			sol[i2] = temp;
+		}
+		else {
+			int prob_elt = drand48();
+			//  (100/(100 choose 2))
+			int prob_set = 2/99;
+
+			if(prob_elt < prob_set){
+				int i = (rand()%(PROBSIZE-1));
+				sol[i] = sol[i]*(-1);
+			}
+			else {
+				int i1 = rand()%(PROBSIZE-1);
+				int i2 = rand()%(PROBSIZE-1);
+				sol[i1] = sol[i1]*(-1);
+				sol[i2] = sol[i2]*(-1);
+			}
+		}
+	return sol;
+	}
+	// generate a random pre-partitioned neighbor solution
+	else {
+		//TODO
+	}
+}
+
+/*
+ * residue(sol, mode)
+ *
+ * finds the residue of problem prob (global) with solution sol
+ * interprets sol as standard solution form if mode is non-zero 
+ * and pre-partitioned form otherwise
+ *
+ */
+long long residue(long long* sol, int mode) {
+	// find residue of prob with standard solution
+	if (mode) {
+		//TODO
+	}
+	// find residue of prob with pre-partitioned solution
+	else {
+		//TODO
+	}
+}
+
+/*
+ * t(i)
+ *
+ * annealing function
+ *
+ */
+double t(int i) {
+	//TODO
+}
+
+/*
+ * kk(hp)
+ *
+ * runs karmarkar karp algorithm on heap hp and returns residue
+ *
+ */
+long long kk(heap* hp) {
+	//TODO
+}
+
