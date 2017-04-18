@@ -515,6 +515,14 @@ long double t(int i) {
  *
  */
 long long kk(heap* hp) {
-	//TODO
+	long long a;
+	long long b;
+	do { 
+		a = pull(hp);
+		b = pull(hp);
+		insert(0, hp);
+		insert(llabs(a - b), hp);
+	} while (b > 0);
+	return a;
 }
 

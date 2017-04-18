@@ -38,6 +38,7 @@ void insert_prob(long long*, heap*);
 void printheap(heap*);
 
 // Other functions
+int genrange(int);
 long long genbig(void);
 long long* genprob(void);
 int* rand_sol(int);
