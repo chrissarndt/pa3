@@ -43,7 +43,7 @@ long long* genprob(void);
 int* rand_sol(int);
 int* gen_rand_neighbor(int*, int);
 long long residue(int*, int);
-double t(int);
+long double t(int);
 long long kk(heap*);
 
 #endif

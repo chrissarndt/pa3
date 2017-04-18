@@ -175,7 +175,7 @@ long long sim_anneal(int* sol, int mode) {
 	int* orig_sol = sol;
 	for(int i = 0; i < MAX_ITER; i++){
 		int* new_sol = gen_rand_neighbor(sol, mode);
-		double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((double) t(i)));
+		long double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((long double) t(i)));
 		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
 			sol = new_sol;
 	    }
@@ -504,8 +504,8 @@ long long residue(int* sol, int mode) {
  * annealing function
  *
  */
-double t(int i) {
-	//TODO
+long double t(int i) {
+	return 10000000000 * pow(.8, floor(i / (double)300));
 }
 
 /*
