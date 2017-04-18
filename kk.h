@@ -22,9 +22,9 @@ typedef struct heap {
  * * * * * * * * * * * * * */
 
 // Heuristics
-long long repeated_rand(long long*, int);
-long long hill_climb(long long*, int);
-long long sim_anneal(long long*, int);
+long long repeated_rand(int*, int);
+long long hill_climb(int*, int);
+long long sim_anneal(int*, int);
 
 // Heap function prototypes
 int par(int);
@@ -40,9 +40,9 @@ void printheap(heap*);
 // Other functions
 long long genbig(void);
 long long* genprob(void);
-long long* rand_sol(int);
-long long* gen_rand_neighbor(long long*, int);
-long long residue(long long*, int);
+int* rand_sol(int);
+int* gen_rand_neighbor(int*, int);
+long long residue(int*, int);
 double t(int);
 long long kk(heap*);
 

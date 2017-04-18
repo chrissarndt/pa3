@@ -473,11 +473,17 @@ int* gen_rand_neighbor(int* sol, int mode) {
 long long residue(int* sol, int mode) {
 	// find residue of prob with standard solution
 	if (mode) {
-		//TODO
+		long long s1 = 0;
+		long long s2 = 0;
+		for (int i = 0; i < PROBSIZE; i++) {
+			long long* t = (sol[i] > 0) ? &s1 : &s2;
+			*t += prob[i];
+		}
+		return llabs(s1 - s2);
 	}
 	// find residue of prob with pre-partitioned solution
 	else {
-		//TODO
+		// TODO
 	}
 }
 
