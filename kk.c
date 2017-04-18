@@ -15,6 +15,8 @@
 // maximum element in a single problem
 #define MAXNUM 1000000000000
 
+long long* prob;
+
 /*
  *
  * CS124: PA3
@@ -37,14 +39,6 @@
  *   results.tsv
  * 
  */
-
-
-
-
-long long* prob;
-int* sol;
-
-
 
 int main(int argc, char* argv[]) {
 	// error checking and rand() seed
