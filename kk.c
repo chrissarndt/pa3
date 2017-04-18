@@ -97,12 +97,12 @@ int main(int argc, char* argv[]) {
 
 			// run algorithms on problem
 			karmkarp = kk(hp);
-			randstd = repeated_rand(rand_sol(0), 0);
-			randpp = repeated_rand(rand_sol(1), 1);
-			hillstd = hill_climb(rand_sol(0), 0);
-			hillpp = hill_climb(rand_sol(1), 1);
-			simstd = sim_anneal(rand_sol(0), 0);
-			simpp = sim_anneal(rand_sol(1), 1);
+			randstd = repeated_rand(rand_sol(1), 1);
+			randpp = repeated_rand(rand_sol(0), 0);
+			hillstd = hill_climb(rand_sol(1), 1);
+			hillpp = hill_climb(rand_sol(0), 0);
+			simstd = sim_anneal(rand_sol(1), 1);
+			simpp = sim_anneal(rand_sol(0), 0);
 
 			// clean up for next loop and print
 			heap_kill(hp);
@@ -483,7 +483,18 @@ long long residue(int* sol, int mode) {
 	}
 	// find residue of prob with pre-partitioned solution
 	else {
-		// TODO
+		// find A'
+		long long* aprime = (long long*) calloc(PROBSIZE, sizeof(long long));
+		for (int i = 0; i < PROBSIZE; i++) {
+			aprime[sol[i]] += prob[i];
+		}
+
+		// find residue
+		heap* hp = heap_init();
+		insert_prob(aprime, hp);
+		long long ret = kk(hp);
+		heap_kill(hp);
+		return ret;
 	}
 }
 
