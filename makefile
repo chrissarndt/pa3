@@ -7,4 +7,4 @@ filltest: filltest.c
 	gcc -g -std=c99 -o filltest filltest.c -lm
 
 clean:
-	rm -rf kk filltest *.txt
+	rm -rf kk filltest *.txt *.tsv *.dSYM

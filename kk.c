@@ -11,12 +11,12 @@
 // number of elements in a single problem
 #define PROBSIZE 100
 // total number of problems
-#define NUMPROBS 50
+#define NUMPROBS 100
 // maximum element in a single problem
 #define MAXNUM 1000000000000
 
 long long* prob;
-heapnode* head;
+mem ptr_data;
 
 /*
  *
@@ -51,9 +51,15 @@ int main(int argc, char* argv[]) {
 	srand(time(NULL));
 	srand48(time(NULL));
 
+	ptr_data.ptrs = (void**) calloc(50000, sizeof(void*));
+	ptr_data.sz = (50000*sizeof(void*));
+
+	clock_t start, end;
+
 	// if given inputfile, parse and run KK
 	if (argc == 2) {
 		// read file into string
+		start = clock();
 		FILE* f = fopen(argv[1], "r");	
 		fseek(f, 0, SEEK_END);
 		int fsz = ftell(f);
@@ -73,15 +79,21 @@ int main(int argc, char* argv[]) {
 
 		// print result and exit
 		long long res = kk(hp);
-		heap_clean();
-		printf("%llu\n", res);
+		mem_clean();
+		free(ptr_data.ptrs);
+		end = clock();
+		printf("\n\n    Processed and analyzed input in %lf seconds\n    Residue: %llu\n", 
+						(double) (end - start)/CLOCKS_PER_SEC, res);
 	}
 	else {
 		// open results file and declare variables
 		FILE* w = fopen("results.tsv", "w");
+		FILE* w1 = fopen("times.tsv", "w");
 		fprintf(w, "kk\trs\trp\ths\thp\tss\tsp\n");
+		fprintf(w1, "kk\trs\trp\ths\thp\tss\tsp\n");
 		long long karmkarp, randstd, randpp, 
 			 	hillstd, hillpp, simstd, simpp;
+		double kkt, rst, rpt, hst, hpt, sst, spt;
 
 		for (int i = 0; i < NUMPROBS; i++) {
 			prob = genprob();
@@ -89,30 +101,52 @@ int main(int argc, char* argv[]) {
 			insert_prob(prob, hp);
 	
 			// run algorithms on problem
-			printf("%d:  ", i);
+			start = clock();
 			karmkarp = kk(hp);
-			printf("1 ");
+			end = clock();
+			kkt = (double) (end - start)/CLOCKS_PER_SEC;
+
+			start = clock();
 			randstd = repeated_rand(rand_sol(1), 1);
-			printf("2 ");
+			end = clock();
+			rst = (double) (end - start)/CLOCKS_PER_SEC;
+
+			start = clock();
 			randpp = repeated_rand(rand_sol(0), 0);
-			printf("3 ");
+			end = clock();
+			rpt = (double) (end - start)/CLOCKS_PER_SEC;
+
+			start = clock();
 			hillstd = hill_climb(rand_sol(1), 1);
-			printf("4 ");
+			end = clock();
+			hst = (double) (end - start)/CLOCKS_PER_SEC;
+
+			start = clock();
 			hillpp = hill_climb(rand_sol(0), 0);
-			printf("5 ");
+			end = clock();
+			hpt = (double) (end - start)/CLOCKS_PER_SEC;
+
+			start = clock();
 			simstd = sim_anneal(rand_sol(1), 1);
-			printf("6 ");
+			end = clock();
+			sst = (double) (end - start)/CLOCKS_PER_SEC;
+
+			start = clock();
 			simpp = sim_anneal(rand_sol(0), 0);
-			printf("7\n");
-	
+			end = clock();
+			spt = (double) (end - start)/CLOCKS_PER_SEC;
+
 			// clean up for next loop and print
-			free(prob);
-			heap_clean();
+			mem_clean();
 			fprintf(w, "%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", 
 				karmkarp, randstd, randpp, hillstd, hillpp, 
 				simstd, simpp);
+			fprintf(w1, "%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
+				kkt, rst, rpt, hst, hpt, sst, spt);
+			printf("Iteration %d done.\n", i);
 		}
 	}
+	free(ptr_data.ptrs);
 	return(0);
 }
 
@@ -173,7 +207,7 @@ long long hill_climb(int* sol, int mode) {
  */
 
 long long sim_anneal(int* sol, int mode) {
-	int* orig_sol = (int*) calloc(PROBSIZE, sizeof(int));
+	int* orig_sol = (int*) alloc_help(PROBSIZE * sizeof(int));
 	memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	for(int i = 0; i < MAX_ITER; i++){
 		int* new_sol = gen_rand_neighbor(sol, mode);
@@ -232,7 +266,6 @@ int right(int par) {
  * Heap manipulation functions
  *
  * heap_init() - initializes a heap 
- * heap_clean() - cleans all allocated heaps
  * insert(elt, hp) - inserts element elt into heap hp
  * pull(hp) - pulls the minimum element of heap hp
  * insert_prob(prob, hp) - inserts entire problem prob into heap hp
@@ -241,30 +274,11 @@ int right(int par) {
  */
 
 heap* heap_init() {
-	heap* hp = (heap*) calloc(1, sizeof(heap));
-	heapnode* hpn = (heapnode*) calloc(1, sizeof(heapnode));
-	hpn->hp = hp;
-	hpn->next = head;
-	head = hpn;
-	hp->h = (long long*) calloc(100, sizeof(long long));
+	heap* hp = (heap*) alloc_help(1 * sizeof(heap));
+	hp->h = (long long*) alloc_help(100 * sizeof(long long));
 	hp->sz = 0;
 	return hp;
 }
-
-/*
- * heap_clean(void)
- *
- * frees all allocated heaps
- *
- */
-void heap_clean(void) {
-	while(head) {
-		free(head->hp->h);
-		free(head->hp);
-		head = head->next;
-	}
-}
-
 
 
 /*
@@ -360,6 +374,39 @@ void printheap(heap* hp) {
  * * * * * * * * * * * * */
 
 /*
+ * alloc_help(n)
+ *
+ * allocates a void* with n bytes of available data
+ * and puts in global mem ptr_data.for later freeing
+ *
+ */
+void* alloc_help(size_t n) {
+	void* ret = calloc(1, n);
+	if (ptr_data.numptrs * sizeof(void*) >= ptr_data.sz) {
+		ptr_data.ptrs = (void**) realloc((void*) ptr_data.ptrs, 
+					ptr_data.sz * 2);
+		ptr_data.sz *= 2;
+	}
+	ptr_data.ptrs[ptr_data.numptrs] = ret;
+	ptr_data.numptrs++;
+	return ret;
+}
+
+/*
+ * mem_clean()
+ *
+ * cleans all allocated memory
+ *
+ */
+void mem_clean(void) {
+	for (size_t s = 0; s < ptr_data.numptrs; s++) {
+		free(ptr_data.ptrs[s]);
+		ptr_data.ptrs[s] = 0;
+		ptr_data.numptrs--;
+	}
+}
+
+/*
  * genrange(n)
  *
  * generates a random integer in range [0, n(
@@ -400,7 +447,7 @@ long long genbig() {
  *
  */
 long long* genprob() {
-	long long* ret = (long long*) calloc(PROBSIZE, sizeof(long long));
+	long long* ret = (long long*) alloc_help(PROBSIZE * sizeof(long long));
 	for (int i = 0; i < PROBSIZE; i++) {
 		ret[i] = genbig();
 	}
@@ -417,7 +464,7 @@ long long* genprob() {
  *
  */
 int* rand_sol(int mode) {
-	int* sol = (int*) calloc(PROBSIZE, sizeof(int));
+	int* sol = (int*) alloc_help(PROBSIZE * sizeof(int));
 	for(int i = 0; i < PROBSIZE; i++) {
 		// standard solution format
 		if (mode) {
@@ -442,7 +489,7 @@ int* rand_sol(int mode) {
  */
 int* gen_rand_neighbor(int* sol, int mode) {
 	// copy old solution
-	int* newsol = (int*) calloc(PROBSIZE, sizeof(int));
+	int* newsol = (int*) alloc_help(PROBSIZE * sizeof(int));
 	memcpy(newsol, sol, PROBSIZE * sizeof(int));
 
 	// change copy to random neighbor using standard format
@@ -493,7 +540,7 @@ long long residue(int* sol, int mode) {
 	// find residue of prob with pre-partitioned solution
 	else {
 		// find A'
-		long long* aprime = (long long*) calloc(PROBSIZE, sizeof(long long));
+		long long* aprime = (long long*) alloc_help(PROBSIZE * sizeof(long long));
 		for (int i = 0; i < PROBSIZE; i++) {
 			aprime[sol[i]] += prob[i];
 		}

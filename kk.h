@@ -14,10 +14,11 @@ typedef struct heap {
 	long long* h;
 } heap;
 
-typedef struct heapnode {
-	heap* hp;
-	struct heapnode* next;
-} heapnode;
+typedef struct mem {
+	size_t numptrs;
+	size_t sz;
+	void** ptrs;
+} mem;
 
 
 /* * * * * * * * * * * * * *
@@ -26,7 +27,7 @@ typedef struct heapnode {
  * * * * * * * * * * * * * *
  * * * * * * * * * * * * * */
 extern long long* prob;
-extern heapnode* head;
+extern mem ptr_data;
 
 
 /* * * * * * * * * * * * * *
@@ -45,13 +46,14 @@ int par(int);
 int left(int);
 int right(int);
 heap* heap_init(void);
-void heap_clean(void);
 void insert(long long, heap*);
 long long pull(heap*);
 void insert_prob(long long*, heap*);
 void printheap(heap*);
 
 // Other functions
+void* alloc_help(size_t);
+void mem_clean(void);
 int genrange(int);
 long long genbig(void);
 long long* genprob(void);
