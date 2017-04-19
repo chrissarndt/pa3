@@ -7,7 +7,7 @@
 #include "kk.h"
 
 // maximum number of iterations for heuristics
-#define MAX_ITER 100
+#define MAX_ITER 25000
 // number of elements in a single problem
 #define PROBSIZE 100
 // total number of problems
@@ -16,6 +16,7 @@
 #define MAXNUM 1000000000000
 
 long long* prob;
+heapnode* head;
 
 /*
  *
@@ -71,42 +72,45 @@ int main(int argc, char* argv[]) {
 
 		// print result and exit
 		long long res = kk(hp);
-		heap_kill(hp);
+		heap_clean();
 		printf("%llu\n", res);
 	}
 	else {
 		// open results file and declare variables
-		FILE* w = fopen("results.tsv", "a");
+		FILE* w = fopen("results.tsv", "w");
 		fprintf(w, "kk\trs\trp\ths\thp\tss\tsp\n");
 		long long karmkarp, randstd, randpp, 
 			 	hillstd, hillpp, simstd, simpp;
 
-		prob = genprob();
-		heap* hp = heap_init();
-		insert_prob(prob, hp);
-
-		// run algorithms on problem
-		karmkarp = kk(hp);
-		printf("1\n");
-		randstd = repeated_rand(rand_sol(1), 1);
-		printf("2\n");
-		randpp = repeated_rand(rand_sol(0), 0);
-		printf("3\n");
-		hillstd = hill_climb(rand_sol(1), 1);
-		printf("4\n");
-		hillpp = hill_climb(rand_sol(0), 0);
-		printf("5\n");
-		simstd = sim_anneal(rand_sol(1), 1);
-		printf("6\n");
-		simpp = sim_anneal(rand_sol(0), 0);
-		printf("7\n");
-
-		// clean up for next loop and print
-		heap_kill(hp);
-		free(prob);
-		fprintf(w, "%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", 
-			karmkarp, randstd, randpp, hillstd, hillpp, 
-			simstd, simpp);
+		for (int i = 0; i < NUMPROBS; i++) {
+			prob = genprob();
+			heap* hp = heap_init();
+			insert_prob(prob, hp);
+	
+			// run algorithms on problem
+			printf("%d:  ", i);
+			karmkarp = kk(hp);
+			printf("1 ");
+			randstd = repeated_rand(rand_sol(1), 1);
+			printf("2 ");
+			randpp = repeated_rand(rand_sol(0), 0);
+			printf("3 ");
+			hillstd = hill_climb(rand_sol(1), 1);
+			printf("4 ");
+			hillpp = hill_climb(rand_sol(0), 0);
+			printf("5 ");
+			simstd = sim_anneal(rand_sol(1), 1);
+			printf("6 ");
+			simpp = sim_anneal(rand_sol(0), 0);
+			printf("7\n");
+	
+			// clean up for next loop and print
+			free(prob);
+			heap_clean();
+			fprintf(w, "%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", 
+				karmkarp, randstd, randpp, hillstd, hillpp, 
+				simstd, simpp);
+		}
 	}
 	return(0);
 }
@@ -130,16 +134,9 @@ int main(int argc, char* argv[]) {
  */
 long long repeated_rand(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
-		printf("here\n");
 		int* new_sol = rand_sol(mode);
-		printf("there\n");
 		if(residue(new_sol, mode) < residue(sol, mode)){
-			int* temp = sol;
 			sol = new_sol;
-			free(temp);
-		}
-		else {
-			free(new_sol);
 		}
 	}
 	return residue(sol, mode);
@@ -157,16 +154,9 @@ long long repeated_rand(int* sol, int mode) {
 
 long long hill_climb(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
-		printf("here\n");
 		int* new_sol = gen_rand_neighbor(sol, mode);
-		printf("there\n");
 		if(residue(new_sol, mode) < residue(sol, mode)){
-			int* temp = sol;
 			sol = new_sol;
-			free(temp);
-		}
-		else {
-			free(new_sol);
 		}
 	}
 	return residue(sol, mode);
@@ -185,18 +175,11 @@ long long sim_anneal(int* sol, int mode) {
 	int* orig_sol = (int*) calloc(PROBSIZE, sizeof(int));
 	memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	for(int i = 0; i < MAX_ITER; i++){
-		printf("here\n");
 		int* new_sol = gen_rand_neighbor(sol, mode);
 		long double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((long double) t(i)));
-		printf("there\n");
 		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
-			int* temp = sol;
 			sol = new_sol;
-			free(temp);
 	    }
-		else {
-			free(new_sol);
-		}
 	    if(residue(sol, mode) < residue(orig_sol, mode)) {
 			memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	    }
@@ -248,7 +231,7 @@ int right(int par) {
  * Heap manipulation functions
  *
  * heap_init() - initializes a heap 
- * heap_kill() - frees a heap
+ * heap_clean() - cleans all allocated heaps
  * insert(elt, hp) - inserts element elt into heap hp
  * pull(hp) - pulls the minimum element of heap hp
  * insert_prob(prob, hp) - inserts entire problem prob into heap hp
@@ -258,21 +241,30 @@ int right(int par) {
 
 heap* heap_init() {
 	heap* hp = (heap*) calloc(1, sizeof(heap));
+	heapnode* hpn = (heapnode*) calloc(1, sizeof(heapnode));
+	hpn->hp = hp;
+	hpn->next = head;
+	head = hpn;
 	hp->h = (long long*) calloc(100, sizeof(long long));
 	hp->sz = 0;
 	return hp;
 }
 
 /*
- * heap_kill(hp)
+ * heap_clean(void)
  *
- * frees allocated memory for heap hp
+ * frees all allocated heaps
  *
  */
-void heap_kill(heap* hp) {
-	free(hp->h);
-	free(hp);
+void heap_clean(void) {
+	while(head) {
+		free(head->hp->h);
+		free(head->hp);
+		head = head->next;
+	}
 }
+
+
 
 /*
  * insert(elt, hp) 
@@ -509,7 +501,6 @@ long long residue(int* sol, int mode) {
 		heap* hp = heap_init();
 		insert_prob(aprime, hp);
 		long long ret = kk(hp);
-		heap_kill(hp);
 		return ret;
 	}
 }

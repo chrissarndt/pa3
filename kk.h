@@ -14,6 +14,11 @@ typedef struct heap {
 	long long* h;
 } heap;
 
+typedef struct heapnode {
+	heap* hp;
+	struct heapnode* next;
+} heapnode;
+
 
 /* * * * * * * * * * * * * *
  * * * * * * * * * * * * * *
@@ -21,6 +26,7 @@ typedef struct heap {
  * * * * * * * * * * * * * *
  * * * * * * * * * * * * * */
 extern long long* prob;
+extern heapnode* head;
 
 
 /* * * * * * * * * * * * * *
@@ -39,7 +45,7 @@ int par(int);
 int left(int);
 int right(int);
 heap* heap_init(void);
-void heap_kill(heap*);
+void heap_clean(void);
 void insert(long long, heap*);
 long long pull(heap*);
 void insert_prob(long long*, heap*);
