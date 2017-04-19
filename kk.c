@@ -1,5 +1,3 @@
-#define XOPEN_SOURCE
-#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
@@ -183,13 +181,11 @@ long long hill_climb(int* sol, int mode) {
  */
 
 long long sim_anneal(int* sol, int mode) {
-	int* orig_sol = sol;
+	int* orig_sol = (int*) calloc(PROBSIZE, sizeof(int));
+	memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	for(int i = 0; i < MAX_ITER; i++){
-		printf("fuck\n");
 		int* new_sol = gen_rand_neighbor(sol, mode);
-		printf("this\n");
 		long double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((long double) t(i)));
-		printf("fucking\n");
 		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
 			int* temp = sol;
 			sol = new_sol;
@@ -198,11 +194,9 @@ long long sim_anneal(int* sol, int mode) {
 		else {
 			free(new_sol);
 		}
-		printf("shit\n");
 	    if(residue(sol, mode) < residue(orig_sol, mode)) {
-	    	orig_sol = sol;
+			memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	    }
-		printf("FUCK\n");
 	}
 	return residue(orig_sol, mode);
 }
