@@ -40,6 +40,7 @@ long long* prob;
  * 
  */
 
+
 int main(int argc, char* argv[]) {
 	// error checking and rand() seed
 	if (argc > 2) {
@@ -47,7 +48,7 @@ int main(int argc, char* argv[]) {
 	}
 	srand(time(NULL));
 	srand48(time(NULL));
-
+	
 	// if given inputfile, parse and run KK
 	if (argc == 2) {
 		// read file into string
@@ -65,7 +66,6 @@ int main(int argc, char* argv[]) {
 		char* buf = strtok(fstr, "\n");
 		for (int i = 0; i < PROBSIZE; i++) {
 			insert(atoll(buf), hp);
-			printf("%llu\n", atoll(buf));
 			buf = strtok(NULL, "\n");
 		}
 
@@ -91,12 +91,19 @@ int main(int argc, char* argv[]) {
 
 			// run algorithms on problem
 			karmkarp = kk(hp);
+			printf("1\n");
 			randstd = repeated_rand(rand_sol(1), 1);
+			printf("2\n");
 			randpp = repeated_rand(rand_sol(0), 0);
+			printf("3\n");
 			hillstd = hill_climb(rand_sol(1), 1);
+			printf("4\n");
 			hillpp = hill_climb(rand_sol(0), 0);
+			printf("5\n");
 			simstd = sim_anneal(rand_sol(1), 1);
+			printf("6\n");
 			simpp = sim_anneal(rand_sol(0), 0);
+			printf("7\n");
 
 			// clean up for next loop and print
 			heap_kill(hp);
@@ -130,7 +137,12 @@ long long repeated_rand(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
 		int* new_sol = rand_sol(mode);
 		if(residue(new_sol, mode) < residue(sol, mode)){
+			int* temp = sol;
 			sol = new_sol;
+			free(temp);
+		}
+		else {
+			free(new_sol);
 		}
 	}
 	return residue(sol, mode);
@@ -150,8 +162,13 @@ long long hill_climb(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
 		int* new_sol = gen_rand_neighbor(sol, mode);
 		if(residue(new_sol, mode) < residue(sol, mode)){
+			int* temp = sol;
 			sol = new_sol;
-		}		
+			free(temp);
+		}
+		else {
+			free(new_sol);
+		}
 	}
 	return residue(sol, mode);
 }
@@ -168,14 +185,24 @@ long long hill_climb(int* sol, int mode) {
 long long sim_anneal(int* sol, int mode) {
 	int* orig_sol = sol;
 	for(int i = 0; i < MAX_ITER; i++){
+		printf("fuck\n");
 		int* new_sol = gen_rand_neighbor(sol, mode);
+		printf("this\n");
 		long double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((long double) t(i)));
+		printf("fucking\n");
 		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
+			int* temp = sol;
 			sol = new_sol;
+			free(temp);
 	    }
+		else {
+			free(new_sol);
+		}
+		printf("shit\n");
 	    if(residue(sol, mode) < residue(orig_sol, mode)) {
 	    	orig_sol = sol;
 	    }
+		printf("FUCK\n");
 	}
 	return residue(orig_sol, mode);
 }
@@ -282,7 +309,7 @@ void insert(long long elt, heap* hp) {
  */
 long long pull(heap* hp) {
 	int maxelt = hp->h[0];
-	int last = hp->h[hp->sz];
+	int last = hp->h[hp->sz - 1];
 	hp->h[hp->sz] = 0;
 	hp->sz--;
 	int swap, cur;
@@ -467,13 +494,11 @@ int* gen_rand_neighbor(int* sol, int mode) {
 long long residue(int* sol, int mode) {
 	// find residue of prob with standard solution
 	if (mode) {
-		long long s1 = 0;
-		long long s2 = 0;
+		long long ret = 0;
 		for (int i = 0; i < PROBSIZE; i++) {
-			long long* t = (sol[i] > 0) ? &s1 : &s2;
-			*t += prob[i];
+			ret += sol[i] * prob[i];
 		}
-		return llabs(s1 - s2);
+		return llabs(ret);
 	}
 	// find residue of prob with pre-partitioned solution
 	else {
