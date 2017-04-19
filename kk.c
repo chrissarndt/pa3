@@ -1,3 +1,5 @@
+#define XOPEN_SOURCE
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
@@ -74,42 +76,37 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		// open results file and declare variables
-		FILE* w = fopen("results.tsv", "w");
+		FILE* w = fopen("results.tsv", "a");
 		fprintf(w, "kk\trs\trp\ths\thp\tss\tsp\n");
 		long long karmkarp, randstd, randpp, 
 			 	hillstd, hillpp, simstd, simpp;
 
+		prob = genprob();
+		heap* hp = heap_init();
+		insert_prob(prob, hp);
 
+		// run algorithms on problem
+		karmkarp = kk(hp);
+		printf("1\n");
+		randstd = repeated_rand(rand_sol(1), 1);
+		printf("2\n");
+		randpp = repeated_rand(rand_sol(0), 0);
+		printf("3\n");
+		hillstd = hill_climb(rand_sol(1), 1);
+		printf("4\n");
+		hillpp = hill_climb(rand_sol(0), 0);
+		printf("5\n");
+		simstd = sim_anneal(rand_sol(1), 1);
+		printf("6\n");
+		simpp = sim_anneal(rand_sol(0), 0);
+		printf("7\n");
 
-		// iterate through NUMPROBS problems and find solutions
-		for (int i = 0; i < NUMPROBS; i++) {
-			prob = genprob();
-			heap* hp = heap_init();
-			insert_prob(prob, hp);
-
-			// run algorithms on problem
-			karmkarp = kk(hp);
-			printf("1\n");
-			randstd = repeated_rand(rand_sol(1), 1);
-			printf("2\n");
-			randpp = repeated_rand(rand_sol(0), 0);
-			printf("3\n");
-			hillstd = hill_climb(rand_sol(1), 1);
-			printf("4\n");
-			hillpp = hill_climb(rand_sol(0), 0);
-			printf("5\n");
-			simstd = sim_anneal(rand_sol(1), 1);
-			printf("6\n");
-			simpp = sim_anneal(rand_sol(0), 0);
-			printf("7\n");
-
-			// clean up for next loop and print
-			heap_kill(hp);
-			free(prob);
-			fprintf(w, "%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", 
-				karmkarp, randstd, randpp, hillstd, hillpp, 
-				simstd, simpp);
-		}
+		// clean up for next loop and print
+		heap_kill(hp);
+		free(prob);
+		fprintf(w, "%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", 
+			karmkarp, randstd, randpp, hillstd, hillpp, 
+			simstd, simpp);
 	}
 	return(0);
 }
@@ -133,7 +130,9 @@ int main(int argc, char* argv[]) {
  */
 long long repeated_rand(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
+		printf("here\n");
 		int* new_sol = rand_sol(mode);
+		printf("there\n");
 		if(residue(new_sol, mode) < residue(sol, mode)){
 			int* temp = sol;
 			sol = new_sol;
@@ -158,7 +157,9 @@ long long repeated_rand(int* sol, int mode) {
 
 long long hill_climb(int* sol, int mode) {
 	for(int i = 0; i < MAX_ITER; i++){
+		printf("here\n");
 		int* new_sol = gen_rand_neighbor(sol, mode);
+		printf("there\n");
 		if(residue(new_sol, mode) < residue(sol, mode)){
 			int* temp = sol;
 			sol = new_sol;
@@ -184,8 +185,10 @@ long long sim_anneal(int* sol, int mode) {
 	int* orig_sol = (int*) calloc(PROBSIZE, sizeof(int));
 	memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	for(int i = 0; i < MAX_ITER; i++){
+		printf("here\n");
 		int* new_sol = gen_rand_neighbor(sol, mode);
 		long double prob = exp(-(residue(new_sol, mode)-residue(sol, mode))/((long double) t(i)));
+		printf("there\n");
 		if(residue(new_sol, mode) < residue(sol, mode) || drand48() < prob){
 			int* temp = sol;
 			sol = new_sol;
