@@ -42,6 +42,7 @@ heapnode* head;
  */
 
 
+
 int main(int argc, char* argv[]) {
 	// error checking and rand() seed
 	if (argc > 2) {
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
 	}
 	srand(time(NULL));
 	srand48(time(NULL));
-	
+
 	// if given inputfile, parse and run KK
 	if (argc == 2) {
 		// read file into string
@@ -297,8 +298,8 @@ void insert(long long elt, heap* hp) {
  *
  */
 long long pull(heap* hp) {
-	int maxelt = hp->h[0];
-	int last = hp->h[hp->sz - 1];
+	long long maxelt = hp->h[0];
+	long long last = hp->h[hp->sz - 1];
 	hp->h[hp->sz] = 0;
 	hp->sz--;
 	int swap, cur;
@@ -522,8 +523,8 @@ long double t(int i) {
  *
  */
 long long kk(heap* hp) {
-	long long a;
-	long long b;
+	long long a = 0;
+	long long b = 0;
 	do { 
 		a = pull(hp);
 		b = pull(hp);
@@ -533,3 +534,17 @@ long long kk(heap* hp) {
 	return a;
 }
 
+
+/*
+ * printsol()
+ *
+ * prints solution sol to STDOUT
+ *
+ */
+void printsol(int* sol) {
+	printf("  %d", sol[0]);
+	for (int i = 1; i < PROBSIZE; i++) {
+		printf(", %d", sol[i]);
+	}
+	printf("\n\n");
+}

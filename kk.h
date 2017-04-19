@@ -60,5 +60,6 @@ int* gen_rand_neighbor(int*, int);
 long long residue(int*, int);
 long double t(int);
 long long kk(heap*);
+void printsol(int*);
 
 #endif
