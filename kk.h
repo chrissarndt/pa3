@@ -15,7 +15,7 @@
 // number of elements in a single problem
 #define PROBSIZE 100
 // total number of problems
-#define NUMPROBS 100
+#define NUMPROBS 5
 // maximum element in a single problem
 #define MAXNUM 1000000000000
 // resolution of graph data

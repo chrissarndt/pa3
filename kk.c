@@ -79,6 +79,7 @@ int main(int argc, char* argv[]) {
 		end = clock();
 		printf("\n\n    Processed and analyzed input in %lf seconds\n    Residue: %llu\n\n\n", 
 						(double) (end - start)/CLOCKS_PER_SEC, res);
+		return(0);
 	}
 	else {
 		// open files and declare variables
@@ -158,21 +159,22 @@ int main(int argc, char* argv[]) {
 		// file maintanence
 		fclose(w);
 		fclose(w1);
+
+		// open new file for graph data and write to it
+		FILE* d = fopen("graph_data.tsv", "w");
+		fprintf(d, "iter\trs\trp\ths\thp\tss\tsp\n");
+		for (int i = 0; i <= (MAX_ITER / GDRES); i++) {
+			fprintf(d, "%d\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", i * GDRES, 
+				graphdata[0][i] / NUMPROBS, graphdata[1][i] / NUMPROBS, 
+				graphdata[2][i] / NUMPROBS, graphdata[3][i] / NUMPROBS, 
+				graphdata[4][i] / NUMPROBS, graphdata[5][i] / NUMPROBS);
+		}
+		fclose(d);
+	
+		free(ptr_data.ptrs);
+		return(0);
 	}
 
-	// open new file for graph data and write to it
-	FILE* d = fopen("graph_data.tsv", "w");
-	fprintf(d, "iter\trs\trp\ths\thp\tss\tsp\n");
-	for (int i = 0; i <= (MAX_ITER / GDRES); i++) {
-		fprintf(d, "%d\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", i * GDRES, 
-			graphdata[0][i] / NUMPROBS, graphdata[1][i] / NUMPROBS, 
-			graphdata[2][i] / NUMPROBS, graphdata[3][i] / NUMPROBS, 
-			graphdata[4][i] / NUMPROBS, graphdata[5][i] / NUMPROBS);
-	}
-	fclose(d);
-
-	free(ptr_data.ptrs);
-	return(0);
 }
 
 
