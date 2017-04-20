@@ -6,17 +6,11 @@
 #include <string.h>
 #include "kk.h"
 
-// maximum number of iterations for heuristics
-#define MAX_ITER 25000
-// number of elements in a single problem
-#define PROBSIZE 100
-// total number of problems
-#define NUMPROBS 100
-// maximum element in a single problem
-#define MAXNUM 1000000000000
-
 long long* prob;
 mem ptr_data;
+int glo_iter_dima;
+int glo_iter_dimb;
+long long** graphdata;
 
 /*
  *
@@ -33,14 +27,16 @@ mem ptr_data;
  *   of numbers.  The residue will be printed to 
  *   STDOUT
  *
- * If not given an inputfile, 100 random sequences 
- *   of 100 numbers will be generated, and the specified
+ * If not given an inputfile, NUMPROBS random sequences ("problems")
+ *   of PROBSIZE numbers will be generated, and the specified
  *   algorithms will be run on each one.  The residues of
- *   these algorithms will be printed to the file 
- *   results.tsv
+ *   each problem will be exported to results.tsv, and the 
+ *   times of each problem will be exported to times.tsv.
+ *   Additionally, the average residue across all problems 
+ *   will be printed as it changes across iterations to graphdata.tsv.
+ *   The resolution of this data is every GDRES iterations.
  * 
  */
-
 
 
 int main(int argc, char* argv[]) {
@@ -80,13 +76,13 @@ int main(int argc, char* argv[]) {
 		// print result and exit
 		long long res = kk(hp);
 		mem_clean();
-		free(ptr_data.ptrs);
 		end = clock();
-		printf("\n\n    Processed and analyzed input in %lf seconds\n    Residue: %llu\n", 
+		printf("\n\n    Processed and analyzed input in %lf seconds\n    Residue: %llu\n\n\n", 
 						(double) (end - start)/CLOCKS_PER_SEC, res);
 	}
 	else {
-		// open results file and declare variables
+		// open files and declare variables
+		graphdata_init();
 		FILE* w = fopen("results.tsv", "w");
 		FILE* w1 = fopen("times.tsv", "w");
 		fprintf(w, "kk\trs\trp\ths\thp\tss\tsp\n");
@@ -97,6 +93,7 @@ int main(int argc, char* argv[]) {
 
 		for (int i = 0; i < NUMPROBS; i++) {
 			prob = genprob();
+			printf("Problem %d generated... ", i + 1);
 			heap* hp = heap_init();
 			insert_prob(prob, hp);
 	
@@ -106,31 +103,43 @@ int main(int argc, char* argv[]) {
 			end = clock();
 			kkt = (double) (end - start)/CLOCKS_PER_SEC;
 
+			glo_iter_dima = 0;
+			glo_iter_dimb = 0;
 			start = clock();
 			randstd = repeated_rand(rand_sol(1), 1);
 			end = clock();
 			rst = (double) (end - start)/CLOCKS_PER_SEC;
 
+			glo_iter_dima = 1;
+			glo_iter_dimb = 0;
 			start = clock();
 			randpp = repeated_rand(rand_sol(0), 0);
 			end = clock();
 			rpt = (double) (end - start)/CLOCKS_PER_SEC;
 
+			glo_iter_dima = 2;
+			glo_iter_dimb = 0;
 			start = clock();
 			hillstd = hill_climb(rand_sol(1), 1);
 			end = clock();
 			hst = (double) (end - start)/CLOCKS_PER_SEC;
 
+			glo_iter_dima = 3;
+			glo_iter_dimb = 0;
 			start = clock();
 			hillpp = hill_climb(rand_sol(0), 0);
 			end = clock();
 			hpt = (double) (end - start)/CLOCKS_PER_SEC;
 
+			glo_iter_dima = 4;
+			glo_iter_dimb = 0;
 			start = clock();
 			simstd = sim_anneal(rand_sol(1), 1);
 			end = clock();
 			sst = (double) (end - start)/CLOCKS_PER_SEC;
 
+			glo_iter_dima = 5;
+			glo_iter_dimb = 0;
 			start = clock();
 			simpp = sim_anneal(rand_sol(0), 0);
 			end = clock();
@@ -143,9 +152,25 @@ int main(int argc, char* argv[]) {
 				simstd, simpp);
 			fprintf(w1, "%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
 				kkt, rst, rpt, hst, hpt, sst, spt);
-			printf("Iteration %d done.\n", i);
+			printf("solved.\n");
 		}
+
+		// file maintanence
+		fclose(w);
+		fclose(w1);
 	}
+
+	// open new file for graph data and write to it
+	FILE* d = fopen("graph_data.tsv", "w");
+	fprintf(d, "iter\trs\trp\ths\thp\tss\tsp\n");
+	for (int i = 0; i <= (MAX_ITER / GDRES); i++) {
+		fprintf(d, "%d\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", i * GDRES, 
+			graphdata[0][i] / NUMPROBS, graphdata[1][i] / NUMPROBS, 
+			graphdata[2][i] / NUMPROBS, graphdata[3][i] / NUMPROBS, 
+			graphdata[4][i] / NUMPROBS, graphdata[5][i] / NUMPROBS);
+	}
+	fclose(d);
+
 	free(ptr_data.ptrs);
 	return(0);
 }
@@ -173,7 +198,10 @@ long long repeated_rand(int* sol, int mode) {
 		if(residue(new_sol, mode) < residue(sol, mode)){
 			sol = new_sol;
 		}
+		aggregate(sol, mode);
 	}
+	glo_iter_dimb++;
+	aggregate(sol, mode);
 	return residue(sol, mode);
 }
 
@@ -193,7 +221,10 @@ long long hill_climb(int* sol, int mode) {
 		if(residue(new_sol, mode) < residue(sol, mode)){
 			sol = new_sol;
 		}
+		aggregate(sol, mode);
 	}
+	glo_iter_dimb++;
+	aggregate(sol, mode);
 	return residue(sol, mode);
 }
 
@@ -218,7 +249,10 @@ long long sim_anneal(int* sol, int mode) {
 	    if(residue(sol, mode) < residue(orig_sol, mode)) {
 			memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	    }
+		aggregate(orig_sol, mode);
 	}
+	glo_iter_dimb++;
+	aggregate(orig_sol, mode);
 	return residue(orig_sol, mode);
 }
 
@@ -594,4 +628,30 @@ void printsol(int* sol) {
 		printf(", %d", sol[i]);
 	}
 	printf("\n\n");
+}
+
+/*
+ * graphdata_init()
+ *
+ * initializes graphdata pointer
+ *
+ */
+void graphdata_init(void) {
+	graphdata = (long long**) calloc(6, sizeof(long long*));
+	for (int i = 0; i < 6; i++) {
+		graphdata[i] = calloc((MAX_ITER / GDRES), sizeof(long long));
+	}	
+}
+
+/*
+ * aggregate(sol, mode)
+ *
+ * aggregates into graphdata
+ *
+ */
+void aggregate(int* sol, int mode) {
+	if (glo_iter_dimb % GDRES == 0 || glo_iter_dimb >= MAX_ITER) {
+		graphdata[glo_iter_dima][glo_iter_dimb / GDRES] += residue(sol, mode);
+	}
+	glo_iter_dimb++;
 }

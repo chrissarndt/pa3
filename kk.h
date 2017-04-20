@@ -3,6 +3,26 @@
 
 
 
+
+/* * * * * * * * * * * * * *
+ * * * * * * * * * * * * * *
+ * * * * * #DEFINES  * * * *
+ * * * * * * * * * * * * * *
+ * * * * * * * * * * * * * */
+
+// maximum number of iterations for heuristics
+#define MAX_ITER 25000
+// number of elements in a single problem
+#define PROBSIZE 100
+// total number of problems
+#define NUMPROBS 100
+// maximum element in a single problem
+#define MAXNUM 1000000000000
+// resolution of graph data
+#define GDRES 50
+
+
+
 /* * * * * * * * * * * * * *
  * * * * * * * * * * * * * *
  * * * TYPE DEFINITIONS  * *
@@ -28,6 +48,8 @@ typedef struct mem {
  * * * * * * * * * * * * * */
 extern long long* prob;
 extern mem ptr_data;
+extern int glo_iter_dima;
+extern int glo_iter_dimb;
 
 
 /* * * * * * * * * * * * * *
@@ -63,5 +85,7 @@ long long residue(int*, int);
 long double t(int);
 long long kk(heap*);
 void printsol(int*);
+void graphdata_init(void);
+void aggregate(int*, int);
 
 #endif
