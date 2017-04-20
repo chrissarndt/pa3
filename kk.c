@@ -193,6 +193,7 @@ int main(int argc, char* argv[]) {
  *
  */
 long long repeated_rand(int* sol, int mode) {
+	graphdata[glo_iter_dima][0] += (residue(sol, mode) / NUMPROBS);
 	for(int i = 0; i < MAX_ITER; i++){
 		int* new_sol = rand_sol(mode);
 		if(residue(new_sol, mode) < residue(sol, mode)){
@@ -216,6 +217,7 @@ long long repeated_rand(int* sol, int mode) {
  */
 
 long long hill_climb(int* sol, int mode) {
+	graphdata[glo_iter_dima][0] += (residue(sol, mode) / NUMPROBS);
 	for(int i = 0; i < MAX_ITER; i++){
 		int* new_sol = gen_rand_neighbor(sol, mode);
 		if(residue(new_sol, mode) < residue(sol, mode)){
@@ -238,6 +240,7 @@ long long hill_climb(int* sol, int mode) {
  */
 
 long long sim_anneal(int* sol, int mode) {
+	graphdata[glo_iter_dima][0] += (residue(sol, mode) / NUMPROBS);
 	int* orig_sol = (int*) alloc_help(PROBSIZE * sizeof(int));
 	memcpy(orig_sol, sol, PROBSIZE * sizeof(int));
 	for(int i = 0; i < MAX_ITER; i++){
@@ -639,7 +642,7 @@ void printsol(int* sol) {
 void graphdata_init(void) {
 	graphdata = (long long**) calloc(6, sizeof(long long*));
 	for (int i = 0; i < 6; i++) {
-		graphdata[i] = calloc((MAX_ITER / GDRES), sizeof(long long));
+		graphdata[i] = calloc((MAX_ITER / GDRES) + 1, sizeof(long long));
 	}	
 }
 
@@ -650,8 +653,8 @@ void graphdata_init(void) {
  *
  */
 void aggregate(int* sol, int mode) {
-	if (glo_iter_dimb % GDRES == 0 || glo_iter_dimb >= MAX_ITER) {
+	glo_iter_dimb++;
+	if (glo_iter_dimb && glo_iter_dimb % GDRES == 0) {
 		graphdata[glo_iter_dima][glo_iter_dimb / GDRES] += residue(sol, mode);
 	}
-	glo_iter_dimb++;
 }
